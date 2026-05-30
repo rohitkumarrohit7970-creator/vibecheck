@@ -19,6 +19,7 @@ COPY . .
 
 # Set PYTHONPATH
 ENV PYTHONPATH=/app
+ENV PORT=8000
 
 # Expose port
 EXPOSE 8000
