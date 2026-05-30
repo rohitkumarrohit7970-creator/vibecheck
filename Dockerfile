@@ -10,19 +10,19 @@ RUN apt-get update && apt-get install -y \
 # Set working directory
 WORKDIR /app
 
-# Copy requirements and install dependencies
-COPY backend/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy requirements first to leverage Docker cache
+COPY backend/requirements.txt ./backend/requirements.txt
+RUN pip install --no-cache-dir -r backend/requirements.txt
 
-# Copy the rest of the application
-COPY backend/ .
+# Copy the entire project (respecting .dockerignore)
+COPY . .
 
-# Set PYTHONPATH
+# Set PYTHONPATH to include the current directory so 'backend' is findable
 ENV PYTHONPATH=/app
 ENV PORT=8000
 
 # Expose port
 EXPOSE 8000
 
-# Start the application
-CMD ["python", "main.py"]
+# Start the application pointing to the main file in the backend folder
+CMD ["python", "backend/main.py"]
