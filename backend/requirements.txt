@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+langchain
+langgraph
+langchain-openai
+langchain-groq
+langchain-huggingface
+langchain-community
+sentence-transformers
+yt-dlp
+openai
+groq
+chromadb
+python-dotenv
+pydantic
+moviepy
+requests
