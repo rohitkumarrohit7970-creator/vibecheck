@@ -35,11 +35,18 @@ class RAGService:
         print("Embeddings model ready.")
         
         # We use Groq for the LLM - Llama 3.3 70B for high-quality comparisons.
-        self.llm = ChatGroq(
-            model="llama-3.3-70b-versatile",
-            temperature=0.1,
-            streaming=True
-        )
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            print("ERROR: GROQ_API_KEY is not set in environment variables.")
+            # We don't raise here to allow initialization, but chat will fail later
+            self.llm = None
+        else:
+            self.llm = ChatGroq(
+                model="llama-3.3-70b-versatile",
+                temperature=0.1,
+                streaming=True,
+                groq_api_key=api_key
+            )
         
         # Use an absolute path for the vector database to avoid permission/path issues
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -127,6 +134,10 @@ class RAGService:
             ("human", "{input}"),
         ])
         
+        if not self.llm:
+            yield "Error: LLM not initialized. Please set GROQ_API_KEY in environment variables."
+            return
+
         chain = prompt | self.llm
         
         async for chunk in chain.astream({

@@ -1,6 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from dotenv import load_dotenv
+import os
+
+# Load environment variables at the very beginning
+load_dotenv()
+
 from backend.models.video import VideoProcessingRequest, ChatRequest, VideoMetadata
 from backend.services.video_service import VideoService
 from backend.services.rag_service import RAGService

@@ -22,11 +22,18 @@ if not HAS_FFMPEG:
     print("WARNING: FFmpeg not found. Audio transcription will be disabled.")
 
 # Using Groq for transcription (Whisper-large-v3)
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+def get_groq_client():
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        print("ERROR: GROQ_API_KEY is not set in environment variables.")
+        return None
+    return Groq(api_key=api_key)
 
 class VideoService:
-    @staticmethod
-    async def get_video_info(url: str) -> VideoMetadata:
+    def __init__(self):
+        self.client = get_groq_client()
+
+    async def get_video_info(self, url: str) -> VideoMetadata:
         print(f"Extracting info for {url}...")
         loop = asyncio.get_event_loop()
         def _get_info():
@@ -85,8 +92,7 @@ class VideoService:
             thumbnail_url=info.get('thumbnail')
         )
 
-    @staticmethod
-    async def get_transcript(url: str, video_id: str) -> str:
+    async def get_transcript(self, url: str, video_id: str) -> str:
         print(f"Starting transcript extraction for {url}...")
         loop = asyncio.get_event_loop()
         
@@ -200,8 +206,10 @@ class VideoService:
             
             # Transcribe with Groq Whisper
             def _transcribe():
+                if not self.client:
+                    raise Exception("Groq client not initialized. Check GROQ_API_KEY.")
                 with open(audio_path, "rb") as audio_file:
-                    return client.audio.transcriptions.create(
+                    return self.client.audio.transcriptions.create(
                         file=(audio_path, audio_file.read()),
                         model="whisper-large-v3",
                         response_format="text",
