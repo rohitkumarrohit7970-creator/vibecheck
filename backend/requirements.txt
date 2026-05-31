@@ -8,10 +8,8 @@ langchain-huggingface
 langchain-community
 sentence-transformers
 yt-dlp
-openai
 groq
 chromadb
 python-dotenv
 pydantic
-moviepy
 requests

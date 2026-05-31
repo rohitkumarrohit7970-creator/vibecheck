@@ -1,7 +1,8 @@
 import os
 from typing import List, Dict, Any, TypedDict, Annotated, AsyncGenerator
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_groq import ChatGroq
+# Move heavy imports inside properties to save startup memory
+# from langchain_huggingface import HuggingFaceEmbeddings
+# from langchain_groq import ChatGroq
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -22,31 +23,8 @@ class AgentState(TypedDict):
 
 class RAGService:
     def __init__(self):
-        # We switch to open-source BGE embeddings to remove dependency on OpenAI.
-        # BAAI/bge-small-en-v1.5 is one of the best small embedding models.
-        print("Initializing embeddings model...")
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="BAAI/bge-small-en-v1.5",
-            model_kwargs={'device': 'cpu'},
-            encode_kwargs={'normalize_embeddings': True}
-        )
-        # Force download/load by embedding a dummy text
-        self.embeddings.embed_query("warmup")
-        print("Embeddings model ready.")
-        
-        # We use Groq for the LLM - Llama 3.3 70B for high-quality comparisons.
-        api_key = os.getenv("GROQ_API_KEY")
-        if not api_key:
-            print("ERROR: GROQ_API_KEY is not set in environment variables.")
-            # We don't raise here to allow initialization, but chat will fail later
-            self.llm = None
-        else:
-            self.llm = ChatGroq(
-                model="llama-3.3-70b-versatile",
-                temperature=0.1,
-                streaming=True,
-                groq_api_key=api_key
-            )
+        self._embeddings = None
+        self._llm = None
         
         # Use an absolute path for the vector database to avoid permission/path issues
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -57,6 +35,39 @@ class RAGService:
             os.makedirs(self.vector_db_path, exist_ok=True)
             
         self.text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+
+    @property
+    def embeddings(self):
+        if self._embeddings is None:
+            print("Initializing embeddings model (Lazy)...")
+            from langchain_huggingface import HuggingFaceEmbeddings
+            self._embeddings = HuggingFaceEmbeddings(
+                model_name="BAAI/bge-small-en-v1.5",
+                model_kwargs={'device': 'cpu'},
+                encode_kwargs={'normalize_embeddings': True}
+            )
+            # Minimal warmup
+            self._embeddings.embed_query("w")
+            print("Embeddings model ready.")
+        return self._embeddings
+
+    @property
+    def llm(self):
+        if self._llm is None:
+            # We use Groq for the LLM - Llama 3.3 70B for high-quality comparisons.
+            api_key = os.getenv("GROQ_API_KEY")
+            if not api_key:
+                print("ERROR: GROQ_API_KEY is not set in environment variables.")
+                return None
+            
+            from langchain_groq import ChatGroq
+            self._llm = ChatGroq(
+                model="llama-3.3-70b-versatile",
+                temperature=0.1,
+                streaming=True,
+                groq_api_key=api_key
+            )
+        return self._llm
 
     def process_videos(self, video_a_meta: Dict, video_b_meta: Dict, transcript_a: str, transcript_b: str):
         # Create documents
